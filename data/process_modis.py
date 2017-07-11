@@ -3,9 +3,11 @@ import os
 from os import listdir
 from os.path import isfile, join
 
+import geopy.distance
 import numpy as np
 import xarray as xr
 from pyhdf.SD import SD, SDC
+
 # MCD43B3, MOD09A1
 # process bounding coordinates from txt file
 name = "sn_bound_10deg.txt"
@@ -22,7 +24,8 @@ with open(name, "r") as fpath:
 
 raw_dir = "modis"
 netcdf_dir = "modis"
-raw_files = [join(raw_dir, fpath) for fpath in listdir(raw_dir) if isfile(join(raw_dir, fpath)) and fpath.endswith(".hdf")]
+raw_files = [join(raw_dir, fpath) for fpath in listdir(raw_dir) if
+             isfile(join(raw_dir, fpath)) and fpath.endswith(".hdf")]
 for fpath in raw_files:
     # Bounds: http://modis-land.gsfc.nasa.gov/pdf/sn_bound_10deg.txt
     n = fpath.split(".")[2]
@@ -31,13 +34,16 @@ for fpath in raw_files:
     bound = [b for b in bounds if b[0] == v and b[1] == h][0]
     latmin, latmax = bound[4], bound[5]
     lonmin, lonmax = bound[2], bound[3]
-    ncol, nrow = 1200, 1200
+    xkmmin, xkmmax = geopy.distance.vincenty((0, 0), (latmin, 0)).kilometers, geopy.distance.vincenty((0, 0), (latmax, 0)).kilometers
+    ykmmin, ykmmax = geopy.distance.vincenty((0, 0), (0, lonmin)).kilometers, geopy.distance.vincenty((0, 0), (0, lonmax)).kilometers
+
+    ncol, nrow = 2400, 2400
     data = []
     dates = []
-    latstep = 1. * (latmax - latmin) / nrow
-    lonstep = 1. * (lonmax - lonmin) / ncol
-    lats = latstep * np.arange(nrow) + latmin
-    lons = lonstep * np.arange(ncol) + lonmin
+    xstep = 1. * (xkmmax - xkmmin) / nrow
+    ystep = 1. * (ykmmax - ykmmin) / ncol
+    x = xstep * np.arange(nrow) + xkmmin
+    y = ystep * np.arange(ncol) + ykmmin
 
     year = int(fpath.split('.')[1][1:5])
     dayofyear = int(fpath.split('.')[1][5:8])
@@ -52,10 +58,9 @@ for fpath in raw_files:
     #     dates = []
 
     hdf = SD(fpath, SDC.READ)
-    print hdf.datasets()
     tp = hdf.select("sur_refl_b02")[:] * 0.02  # scale factor
     data += [tp[:, :, np.newaxis]]
     data[data == 0] = np.nan
-    dr = xr.DataArray(data, coords={'lat': lats,'lon': lons})
+    dr = xr.DataArray(data, coords={'x': x, 'y': y})
     ds = xr.Dataset(dict(sur_refl_b02=dr))
     ds.to_netcdf(os.path.join(netcdf_dir, "MOD09A1_%i_%i.nc" % (h, v)))
