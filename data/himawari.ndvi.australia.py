@@ -36,7 +36,6 @@ def array2raster(newRasterfn,pixelWidth,pixelHeight,array):
   outband.FlushCache()
 
 flist = glob.glob(os.path.join(inDir,'*vis.01.fld.geoss.dat'))
-print flist
 for raster in flist:
   utcHour = int(os.path.basename(raster)[8:10])
   print raster,utcHour
