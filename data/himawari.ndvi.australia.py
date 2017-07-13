@@ -35,7 +35,7 @@ def array2raster(newRasterfn,pixelWidth,pixelHeight,array):
   outRaster.SetProjection(outRasterSRS.ExportToWkt())
   outband.FlushCache()
 
-flist = glo1b.glob(os.path.join(inDir,'*vis.01.fld.geoss.dat'))
+flist = glob.glob(os.path.join(inDir,'*vis.01.fld.geoss.dat'))
 print flist
 for raster in flist:
   utcHour = int(os.path.basename(raster)[8:10])
