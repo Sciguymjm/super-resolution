@@ -6,7 +6,6 @@ from os.path import isfile, join
 import numpy as np
 import xarray as xr
 from pyhdf.SD import SD, SDC
-
 # MCD43B3, MOD09A1
 from pyhdf.error import HDF4Error
 
