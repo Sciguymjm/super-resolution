@@ -8,10 +8,13 @@ import xarray as xr
 from pyhdf.SD import SD, SDC
 
 # MCD43B3, MOD09A1
+from pyhdf.error import HDF4Error
+
 raw_dir = "modis"
 netcdf_dir = "modis"
 
-layers = ["250m 16 days EVI", "250m 16 days NDVI", "250m 16 days NIR reflectance"]
+layers = ["250m 16 days EVI", "250m 16 days NDVI", "250m 16 days NIR reflectance",
+          "250m 16 days composite day of the year"]
 raw_files = [join(raw_dir, fpath) for fpath in listdir(raw_dir) if
              isfile(join(raw_dir, fpath)) and fpath.endswith(".hdf")]
 for fpath in raw_files:
@@ -31,9 +34,12 @@ for fpath in raw_files:
     xs = lrx + np.arange(0, 4800) * xstep
     ys = lry + np.arange(0, 4800) * ystep
     for layer in layers:
-
         sds = hdfFile.select(layer)  # select dataset from hdf file
-        scale_factor, scale_factor_err, add_offset, add_offset_err, calibrated_nt = sds.getcal()
+        try:
+            scale_factor, scale_factor_err, add_offset, add_offset_err, calibrated_nt = sds.getcal()
+        except HDF4Error:
+            print "error getting scale factor, setting to 1"
+            scale_factor = 1
 
         tp = sds[:] * scale_factor  # scale factor
         dr = xr.DataArray(tp, coords=[xs, ys], dims=["x", "y"])
