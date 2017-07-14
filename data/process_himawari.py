@@ -5,7 +5,7 @@ import os
 import gdal
 import numpy as np
 import osr
-
+import xarray
 parser = argparse.ArgumentParser()
 parser.add_argument('inDir', help='Input Directory')
 parser.add_argument('outDir')
@@ -21,6 +21,7 @@ visCols = 12000
 extRows = 24000
 extCols = 24000
 
+# Writing to TIFF will actually improve the processing speed later on, so I'm leaving it in
 
 def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
     cols = array.shape[1]
@@ -40,7 +41,7 @@ def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
 
 
 flist = glob.glob(os.path.join(inDir, '*vis.01.fld.geoss.dat'))
-ndviArrayMVC = np.zeros((visRows, visCols, np.newaxis), dtype=np.int16)
+ndviArrayMVC = np.zeros((visRows, visCols, len(flist) / 4), dtype=np.int16)
 for raster in flist:
     utcHour = int(os.path.basename(raster)[8:10])
     print raster, utcHour
@@ -64,7 +65,3 @@ for raster in flist:
     array2raster(ndvi, pixelWidth, pixelHeight, ndviArray)
     # uncomment for MVC file
     # array2raster(ndviMVC,pixelWidth,pixelHeight,ndviArrayMVC)
-
-# Do composite using modis
-modis_list = glob.glob(os.path.join("modis", "*MOD09A1_250m 16 days composite day of the year*.nc"))
-print modis_list
