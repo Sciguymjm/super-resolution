@@ -1,9 +1,10 @@
 import argparse
 import glob
-
+import os
 import gdal
 import osr
-from pylab import *
+import numpy as np
+import pylab
 
 parser = argparse.ArgumentParser()
 parser.add_argument('inDir', help='Input Directory')
@@ -52,8 +53,8 @@ for raster in flist:
     redArray = np.fromfile(red, dtype='f4').reshape(extRows, extCols)
     nirArray = np.fromfile(nir, dtype='f4').reshape(visRows, visCols)
     redArray_aggr = redArray.reshape(visRows, 2, visCols, 2).mean(axis=(1, 3))
-    nirArray = nirArray[0000:10000, 0000:7000]
-    redArray_aggr = redArray_aggr[0000:10000, 0000:7000]
+    #nirArray = nirArray[0000:10000, 0000:7000]
+    #redArray_aggr = redArray_aggr[0000:10000, 0000:7000]
     ndviArray = (nirArray - redArray_aggr) / (nirArray + redArray_aggr)
     ndviArray = np.nan_to_num(ndviArray)
     ndviArray = np.where(np.logical_and(ndviArray < 1, ndviArray > 0), ndviArray, -0.9999)
