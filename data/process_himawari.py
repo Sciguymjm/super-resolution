@@ -1,10 +1,10 @@
 import argparse
 import glob
 import os
+
 import gdal
-import osr
 import numpy as np
-import pylab
+import osr
 
 parser = argparse.ArgumentParser()
 parser.add_argument('inDir', help='Input Directory')
@@ -40,6 +40,7 @@ def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
 
 
 flist = glob.glob(os.path.join(inDir, '*vis.01.fld.geoss.dat'))
+ndviArrayMVC = np.zeros((visRows, visCols, np.newaxis), dtype=np.int16)
 for raster in flist:
     utcHour = int(os.path.basename(raster)[8:10])
     print raster, utcHour
@@ -47,14 +48,11 @@ for raster in flist:
     nir = raster.replace('.01.', '.03.')
     ndvi = os.path.join(outDir, os.path.basename(raster)[:12] + '.ndvi.tif')
     ndviMVC = os.path.join(os.path.basename(raster)[:8] + '.ndvi.utc-0-6.MVC.tif')
-    # this isn't used, it outputs an array of 0s TODO: figure out how to do Maximum-value composite procedure
-    # https://en.wikipedia.org/wiki/Maximum-value_composite_procedure
-    # ndviArrayMVC = np.zeros((visRows, visCols), dtype=np.int16)
     redArray = np.fromfile(red, dtype='f4').reshape(extRows, extCols)
     nirArray = np.fromfile(nir, dtype='f4').reshape(visRows, visCols)
     redArray_aggr = redArray.reshape(visRows, 2, visCols, 2).mean(axis=(1, 3))
-    #nirArray = nirArray[0000:10000, 0000:7000]
-    #redArray_aggr = redArray_aggr[0000:10000, 0000:7000]
+    # nirArray = nirArray[0000:10000, 0000:7000]
+    # redArray_aggr = redArray_aggr[0000:10000, 0000:7000]
     ndviArray = (nirArray - redArray_aggr) / (nirArray + redArray_aggr)
     ndviArray = np.nan_to_num(ndviArray)
     ndviArray = np.where(np.logical_and(ndviArray < 1, ndviArray > 0), ndviArray, -0.9999)
@@ -66,3 +64,7 @@ for raster in flist:
     array2raster(ndvi, pixelWidth, pixelHeight, ndviArray)
     # uncomment for MVC file
     # array2raster(ndviMVC,pixelWidth,pixelHeight,ndviArrayMVC)
+
+# Do composite using modis
+modis_list = glob.glob(os.path.join("modis", "*MOD09A1_250m 16 days composite day of the year*.nc"))
+print modis_list
