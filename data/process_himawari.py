@@ -5,7 +5,7 @@ import os
 import gdal
 import numpy as np
 import osr
-import xarray
+
 parser = argparse.ArgumentParser()
 parser.add_argument('inDir', help='Input Directory')
 parser.add_argument('outDir')
@@ -20,6 +20,7 @@ visRows = 12000
 visCols = 12000
 extRows = 24000
 extCols = 24000
+
 
 # Writing to TIFF will actually improve the processing speed later on, so I'm leaving it in
 
