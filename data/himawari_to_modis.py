@@ -10,6 +10,8 @@ import xarray
 width = 2400
 height = 2400
 
+hwidth = 12000
+hheight = 12000
 modis_list = glob.glob(os.path.join("modis", "*MOD09A1_*composite day*.nc"))
 modis_ndvi_list = glob.glob(os.path.join("modis", "*MOD09A1_*NDVI*.nc"))
 himawari_doy = []
@@ -19,7 +21,14 @@ for h in himawari_list:
     dataset = gdal.Open(h, gdal.GA_ReadOnly)
     a = dataset.GetRasterBand(1).ReadAsArray()
     himawari_doy.append((datetime.strptime(h.split("\\")[-1].split(".")[0], "%Y%m%d%H%M").timetuple().tm_yday, a))
-himawari_ndvi = np.zeros((width, height))
-print modis_list
+base = himawari_doy[0][0]
+himawari_ndvi = np.zeros((hwidth, hheight, len(himawari_doy)))
+for t in himawari_doy:
+    himawari_ndvi[:, :, t[0] - base] = t[1]
+himawari_ndvi = xarray.DataArray(himawari_ndvi, dims=['x', 'y', 't'])
 for f in modis_list:
     ds = xarray.open_dataset(f)
+    doy = int(f.split("_")[1][5:8])
+    ds -= doy  # normalize the day to 0
+    himawari_composite = himawari_ndvi.isel(x=np.arange(2400), y=np.arange(2400), t=ds.day_of_year.clip(min=0))
+    print himawari_composite
