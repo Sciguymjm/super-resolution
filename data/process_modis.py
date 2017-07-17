@@ -42,6 +42,7 @@ for fpath in raw_files:
 
         tp = sds[:] * scale_factor  # scale factor
         dr = xr.DataArray(tp, coords=[xs, ys], dims=["x", "y"])
-        ds = xr.Dataset(dict(sur_refl_b02=dr))
-        ds.to_netcdf(os.path.join(netcdf_dir, "MOD09A1_%s_%i_%i.nc" % (layer, h, v)))
+        ds = xr.Dataset(dict(day_of_year=dr))
+        ds.to_netcdf(os.path.join(netcdf_dir, "MOD09A1_%s_%s_%i_%i_%s_%s.nc" % (
+            fpath.split(".")[1], layer, h, v, ulx, uly)))
         print "Processed", layer, v, h
