@@ -21,6 +21,10 @@ visCols = 12000
 extRows = 24000
 extCols = 24000
 
+modis_L = 1
+modis_C1 = 6
+modis_C2 = 7.5
+modis_G = 2.5
 
 # Writing to TIFF will actually improve the processing speed later on, so I'm leaving it in
 
@@ -48,8 +52,11 @@ for raster in flist:
     print raster, utcHour
     red = raster.replace('vis', 'ext')
     nir = raster.replace('.01.', '.03.')
-    ndvi = os.path.join(outDir, os.path.basename(raster)[:12] + '.ndvi.tif')
+    ndvi_path = os.path.join(outDir, os.path.basename(raster)[:12] + '.ndvi.tif')
+    nir_path = os.path.join(outDir, os.path.basename(raster)[:12] + '.nir.tif')
+    evi_path = os.path.join(outDir, os.path.basename(raster)[:12] + '.evi.tif')
     ndviMVC = os.path.join(os.path.basename(raster)[:8] + '.ndvi.utc-0-6.MVC.tif')
+    blueArray = np.fromfile(raster, dtype='f4').reshape(visRows, visCols)
     redArray = np.fromfile(red, dtype='f4').reshape(extRows, extCols)
     nirArray = np.fromfile(nir, dtype='f4').reshape(visRows, visCols)
     redArray_aggr = redArray.reshape(visRows, 2, visCols, 2).mean(axis=(1, 3))
@@ -61,8 +68,18 @@ for raster in flist:
     ndviArray = ndviArray * 10000
     ndviArray = ndviArray.astype('i2')
     ndviArray = ndviArray[::-1]  # reverse array so the tif looks like the array
+
+    eviArray = modis_G * (nirArray - redArray_aggr) / (nirArray + modis_C1 * redArray_aggr - modis_C2 * blueArray + modis_L)
+    eviArray = np.nan_to_num(eviArray)
+    eviArray = np.where(np.logical_and(eviArray < 1, eviArray > 0), eviArray, -0.9999)
+    eviArray = eviArray * 10000
+    eviArray = eviArray.astype('i2')
+    eviArray = eviArray[::-1]  # reverse array so the tif looks like the array
+
     # if utcHour < 6:
     #     ndviArrayMVC = np.maximum(ndviArray, ndviArrayMVC)
-    array2raster(ndvi, pixelWidth, pixelHeight, ndviArray)
+    array2raster(ndvi_path, pixelWidth, pixelHeight, ndviArray)
+    array2raster(nir_path, pixelWidth, pixelHeight, nirArray)
+    array2raster(evi_path, pixelWidth, pixelHeight, eviArray)
     # uncomment for MVC file
     # array2raster(ndviMVC,pixelWidth,pixelHeight,ndviArrayMVC)
