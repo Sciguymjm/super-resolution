@@ -26,6 +26,7 @@ modis_C1 = 6
 modis_C2 = 7.5
 modis_G = 2.5
 
+
 # Writing to TIFF will actually improve the processing speed later on, so I'm leaving it in
 
 def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
@@ -48,6 +49,8 @@ def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
 flist = glob.glob(os.path.join(inDir, '*vis.01.fld.geoss.dat'))
 ndviArrayMVC = np.zeros((visRows, visCols, len(flist) / 4), dtype=np.int16)
 for raster in flist:
+    if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.tif'))):
+        continue  # we already processed this one. save us some time
     utcHour = int(os.path.basename(raster)[8:10])
     print raster, utcHour
     red = raster.replace('vis', 'ext')
@@ -55,21 +58,33 @@ for raster in flist:
     ndvi_path = os.path.join(outDir, os.path.basename(raster)[:12] + '.ndvi.tif')
     nir_path = os.path.join(outDir, os.path.basename(raster)[:12] + '.nir.tif')
     evi_path = os.path.join(outDir, os.path.basename(raster)[:12] + '.evi.tif')
-    ndviMVC = os.path.join(os.path.basename(raster)[:8] + '.ndvi.utc-0-6.MVC.tif')
-    blueArray = np.fromfile(raster, dtype='f4').reshape(visRows, visCols)
-    redArray = np.fromfile(red, dtype='f4').reshape(extRows, extCols)
+    # ndviMVC = os.path.join(os.path.basename(raster)[:8] + '.ndvi.utc-0-6.MVC.tif')
     nirArray = np.fromfile(nir, dtype='f4').reshape(visRows, visCols)
-    redArray_aggr = redArray.reshape(visRows, 2, visCols, 2).mean(axis=(1, 3))
     # nirArray = nirArray[0000:10000, 0000:7000]
     # redArray_aggr = redArray_aggr[0000:10000, 0000:7000]
+
+    array2raster(nir_path, pixelWidth, pixelHeight, nirArray)  # process nir
+
+    # now process redArray to minimize the memory and disk usage
+    redArray = np.fromfile(red, dtype='f4').reshape(extRows, extCols)
+    redArray_aggr = redArray.reshape(visRows, 2, visCols, 2).mean(axis=(1, 3))
+
     ndviArray = (nirArray - redArray_aggr) / (nirArray + redArray_aggr)
     ndviArray = np.nan_to_num(ndviArray)
     ndviArray = np.where(np.logical_and(ndviArray < 1, ndviArray > 0), ndviArray, -0.9999)
     ndviArray = ndviArray * 10000
     ndviArray = ndviArray.astype('i2')
     ndviArray = ndviArray[::-1]  # reverse array so the tif looks like the array
+    array2raster(ndvi_path, pixelWidth, pixelHeight, ndviArray)
 
-    eviArray = modis_G * (nirArray - redArray_aggr) / (nirArray + modis_C1 * redArray_aggr - modis_C2 * blueArray + modis_L)
+    del ndviArray  # delete ndvi array to save memory
+
+    # load blue array TODO: actually not the blue array so fix
+    blueArray = np.fromfile(raster, dtype='f4').reshape(visRows, visCols)
+    # compute EVI = G * (NIR - RED) / (NIR + C1 * RED - C2 * BLUE + L)
+    # https://en.wikipedia.org/wiki/Enhanced_vegetation_index
+    eviArray = modis_G * (nirArray - redArray_aggr) / (
+        nirArray + modis_C1 * redArray_aggr - modis_C2 * blueArray + modis_L)
     eviArray = np.nan_to_num(eviArray)
     eviArray = np.where(np.logical_and(eviArray < 1, eviArray > 0), eviArray, -0.9999)
     eviArray = eviArray * 10000
@@ -78,8 +93,6 @@ for raster in flist:
 
     # if utcHour < 6:
     #     ndviArrayMVC = np.maximum(ndviArray, ndviArrayMVC)
-    array2raster(ndvi_path, pixelWidth, pixelHeight, ndviArray)
-    array2raster(nir_path, pixelWidth, pixelHeight, nirArray)
     array2raster(evi_path, pixelWidth, pixelHeight, eviArray)
     # uncomment for MVC file
     # array2raster(ndviMVC,pixelWidth,pixelHeight,ndviArrayMVC)

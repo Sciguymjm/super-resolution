@@ -32,4 +32,4 @@ for f in modis_list:
     ds -= doy  # normalize the day to 0
     himawari_composite = himawari_ndvi.isel(x=np.arange(2400), y=np.arange(2400), t=ds.day_of_year.clip(min=0))
     h_ds = xarray.Dataset(dict(ndvi=himawari_composite))
-    h_ds.to_netcdf("himawari_"+f)
+    h_ds.to_netcdf("himawari_" + f)
