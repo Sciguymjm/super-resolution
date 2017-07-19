@@ -22,7 +22,7 @@ if __name__ == '__main__':
     for h in himawari_list:
         dataset = gdal.Open(h, gdal.GA_ReadOnly)
         a = dataset.GetRasterBand(1).ReadAsArray()
-        himawari_doy.append((datetime.strptime(h.split("\\")[-1].split(".")[0], "%Y%m%d%H%M").timetuple().tm_yday, a))
+        himawari_doy.append((datetime.strptime(h.split("\\")[-1].split("/")[-1].split(".")[0], "%Y%m%d%H%M").timetuple().tm_yday, a))
     base = himawari_doy[0][0]
     himawari_ndvi = np.zeros((width, height, 16))
     for t in himawari_doy:
@@ -34,6 +34,10 @@ if __name__ == '__main__':
         ds = xarray.open_dataset(f)
         doy = int(f.split("_")[1][5:8])
         ds -= doy  # normalize the day to 0
-        himawari_composite = himawari_ndvi.sel(x=np.arange(2400), y=np.arange(2400), t=ds.day_of_year.clip(min=0))
+        himawari_composite = np.zeros((width, height, 1))
+        for r in range(width):
+            for c in range(height):
+                himawari_ndvi.isel_points(x=[r], y=[c], t=[int(ds.day_of_year.clip(min=0)[r, c].values.item(0))])
+        # himawari_composite = himawari_ndvi.isel_points(x=np.arange(2400), y=np.arange(2400), t=ds.day_of_year.clip(min=0))
         h_ds = xarray.Dataset(dict(ndvi=himawari_composite))
         h_ds.to_netcdf("himawari_" + f)
