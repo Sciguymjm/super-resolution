@@ -49,7 +49,7 @@ def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
 flist = glob.glob(os.path.join(inDir, '*vis.01.fld.geoss.dat'))
 ndviArrayMVC = np.zeros((visRows, visCols, len(flist) / 4), dtype=np.int16)
 for raster in flist:
-    if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.tif'))):
+    if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.tif'))) > 2:
         continue  # we already processed this one. save us some time
     utcHour = int(os.path.basename(raster)[8:10])
     print raster, utcHour
