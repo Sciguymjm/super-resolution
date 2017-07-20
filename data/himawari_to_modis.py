@@ -29,14 +29,16 @@ if __name__ == '__main__':
         if t[1] is None:
             continue
         himawari_ndvi[:, :, t[0] - base] = t[1][:width, :height]
+        print t[1][0, 0]
     for f in modis_list:
         ds = xarray.open_dataset(f)
         doy = int(f.split("_")[1][5:8])
         ds -= doy  # normalize the day to 0
         himawari_composite = np.zeros((width, height, 1))
         himawari_composite = himawari_ndvi[range(4800), range(4800), ds.day_of_year.clip(min=0).values]
-        print himawari_composite.shape
+	print himawari_composite.shape, ds.day_of_year.clip(min=0).values, himawari_ndvi[0, 3]	
+        himawari_composite[(himawari_composite == -9999) | (himawari_composite == 9999)] = np.nan 
         # himawari_composite = himawari_ndvi.isel_points(x=np.arange(2400), y=np.arange(2400), t=ds.day_of_year.clip(min=0))
         h_da = xarray.DataArray(himawari_composite, coords=[range(4800), range(4800)], dims=["x", "y"])
         h_ds = xarray.Dataset(dict(ndvi=h_da))
-        h_ds.to_netcdf(f.split("/")[0] + "/himawari_" + f.split("/")[1])
+	h_ds.to_netcdf(f.split("/")[0] + "/himawari_" + "_".join(f.split("/")[1].split("_")[3:]) + f.split("/")[1].split("_")[1] +".nc")
