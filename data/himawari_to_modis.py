@@ -7,8 +7,8 @@ import gdal
 import numpy as np
 import xarray
 
-width = 2400
-height = 2400
+width = 4800
+height = 4800
 
 hwidth = 12000
 hheight = 12000
@@ -29,15 +29,14 @@ if __name__ == '__main__':
         if t[1] is None:
             continue
         himawari_ndvi[:, :, t[0] - base] = t[1][:width, :height]
-    himawari_ndvi = xarray.DataArray(himawari_ndvi, dims=['x', 'y', 't'])
     for f in modis_list:
         ds = xarray.open_dataset(f)
         doy = int(f.split("_")[1][5:8])
         ds -= doy  # normalize the day to 0
         himawari_composite = np.zeros((width, height, 1))
-        for r in range(width):
-            for c in range(height):
-                himawari_ndvi.isel_points(x=[r], y=[c], t=[int(ds.day_of_year.clip(min=0)[r, c].values.item(0))])
+        himawari_composite = himawari_ndvi[range(4800), range(4800), ds.day_of_year.clip(min=0).values]
+        print himawari_composite.shape
         # himawari_composite = himawari_ndvi.isel_points(x=np.arange(2400), y=np.arange(2400), t=ds.day_of_year.clip(min=0))
-        h_ds = xarray.Dataset(dict(ndvi=himawari_composite))
-        h_ds.to_netcdf("himawari_" + f)
+        h_da = xarray.DataArray(himawari_composite, coords=[range(4800), range(4800)], dims=["x", "y"])
+        h_ds = xarray.Dataset(dict(ndvi=h_da))
+        h_ds.to_netcdf(f.split("/")[0] + "/himawari_" + f.split("/")[1])
