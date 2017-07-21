@@ -1,0 +1,20 @@
+
+(nm-applet:11887): nm-applet-WARNING **: Failed to add/activate connection: (1) Private connection already active on the device: uid 1002 has no permission to perform this operation
+Gtk-Message: GtkDialog mapped without a transient parent. This is discouraged.
+
+(nm-applet:11887): nm-applet-CRITICAL **: get_menu_item_for_ap: assertion 'dup_data.hash != NULL' failed
+
+(nm-applet:11887): nm-applet-WARNING **: Failed to add/activate connection: (1) Private connection already active on the device: uid 1002 has no permission to perform this operation
+Gtk-Message: GtkDialog mapped without a transient parent. This is discouraged.
+
+(nm-applet:11887): nm-applet-CRITICAL **: get_menu_item_for_ap: assertion 'dup_data.hash != NULL' failed
+
+(nm-applet:11887): nm-applet-CRITICAL **: get_menu_item_for_ap: assertion 'dup_data.hash != NULL' failed
+
+(nm-applet:11887): nm-applet-CRITICAL **: get_menu_item_for_ap: assertion 'dup_data.hash != NULL' failed
+
+(nm-applet:11887): nm-applet-CRITICAL **: get_menu_item_for_ap: assertion 'dup_data.hash != NULL' failed
+
+(nm-applet:11887): nm-applet-CRITICAL **: get_menu_item_for_ap: assertion 'dup_data.hash != NULL' failed
+
+(nm-applet:11887): nm-applet-CRITICAL **: get_menu_item_for_ap: assertion 'dup_data.hash != NULL' failed

@@ -5,7 +5,10 @@ import os
 import gdal
 import numpy as np
 import osr
-
+# vis.01 - blue
+# vis.02 - green
+# vis.03 - nir
+# ext.01 - red
 parser = argparse.ArgumentParser()
 parser.add_argument('inDir', help='Input Directory')
 parser.add_argument('outDir')
@@ -49,6 +52,8 @@ def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
 flist = glob.glob(os.path.join(inDir, '*vis.01.fld.geoss.dat'))
 ndviArrayMVC = np.zeros((visRows, visCols, len(flist) / 4), dtype=np.int16)
 for raster in flist:
+    if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.dat'))) < 4:
+        continue
     if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.tif'))) > 2:
         continue  # we already processed this one. save us some time
     utcHour = int(os.path.basename(raster)[8:10])
@@ -79,7 +84,7 @@ for raster in flist:
 
     del ndviArray  # delete ndvi array to save memory
 
-    # load blue array TODO: actually not the blue array so fix
+    # load blue array
     blueArray = np.fromfile(raster, dtype='f4').reshape(visRows, visCols)
     # compute EVI = G * (NIR - RED) / (NIR + C1 * RED - C2 * BLUE + L)
     # https://en.wikipedia.org/wiki/Enhanced_vegetation_index
