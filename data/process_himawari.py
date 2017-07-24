@@ -23,9 +23,9 @@ visRows = 12000
 visCols = 12000
 extRows = 24000
 extCols = 24000
-
-modis_L = 1
-modis_C1 = 6
+# https://eospso.gsfc.nasa.gov/sites/default/files/atbd/atbd_mod13.pdf p33
+modis_L = 1.0
+modis_C1 = 6.0
 modis_C2 = 7.5
 modis_G = 2.5
 
@@ -41,7 +41,7 @@ def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
     outRaster = driver.Create(newRasterfn, cols, rows, 1, gdal.GDT_Int16)
     outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
     outband = outRaster.GetRasterBand(1)
-    outband.SetNoDataValue(-9999)
+    outband.SetNoDataValue(-1)
     outband.WriteArray(array)
     outRasterSRS = osr.SpatialReference()
     outRasterSRS.ImportFromEPSG(4326)
@@ -88,6 +88,7 @@ for raster in flist:
     blueArray = np.fromfile(raster, dtype='f4').reshape(visRows, visCols)
     # compute EVI = G * (NIR - RED) / (NIR + C1 * RED - C2 * BLUE + L)
     # https://en.wikipedia.org/wiki/Enhanced_vegetation_index
+    # https://eospso.gsfc.nasa.gov/sites/default/files/atbd/atbd_mod13.pdf p120 F12
     eviArray = modis_G * (nirArray - redArray_aggr) / (
         nirArray + modis_C1 * redArray_aggr - modis_C2 * blueArray + modis_L)
     eviArray = np.nan_to_num(eviArray)
