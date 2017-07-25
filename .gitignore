@@ -142,3 +142,4 @@ fabric.properties
 *cookie*.txt
 data/himawari/
 data/modis/
+*.swp
