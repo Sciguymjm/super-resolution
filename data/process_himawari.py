@@ -5,7 +5,10 @@ import os
 import gdal
 import numpy as np
 import osr
-
+# vis.01 - blue
+# vis.02 - green
+# vis.03 - nir
+# ext.01 - red
 parser = argparse.ArgumentParser()
 parser.add_argument('inDir', help='Input Directory')
 parser.add_argument('outDir')
@@ -20,9 +23,9 @@ visRows = 12000
 visCols = 12000
 extRows = 24000
 extCols = 24000
-
-modis_L = 1
-modis_C1 = 6
+# https://eospso.gsfc.nasa.gov/sites/default/files/atbd/atbd_mod13.pdf p33
+modis_L = 1.0
+modis_C1 = 6.0
 modis_C2 = 7.5
 modis_G = 2.5
 
@@ -38,7 +41,7 @@ def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
     outRaster = driver.Create(newRasterfn, cols, rows, 1, gdal.GDT_Int16)
     outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
     outband = outRaster.GetRasterBand(1)
-    outband.SetNoDataValue(-9999)
+    outband.SetNoDataValue(-1)
     outband.WriteArray(array)
     outRasterSRS = osr.SpatialReference()
     outRasterSRS.ImportFromEPSG(4326)
@@ -49,6 +52,8 @@ def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
 flist = glob.glob(os.path.join(inDir, '*vis.01.fld.geoss.dat'))
 ndviArrayMVC = np.zeros((visRows, visCols, len(flist) / 4), dtype=np.int16)
 for raster in flist:
+    if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.dat'))) < 4:
+        continue
     if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.tif'))) > 2:
         continue  # we already processed this one. save us some time
     utcHour = int(os.path.basename(raster)[8:10])
@@ -79,10 +84,11 @@ for raster in flist:
 
     del ndviArray  # delete ndvi array to save memory
 
-    # load blue array TODO: actually not the blue array so fix
+    # load blue array
     blueArray = np.fromfile(raster, dtype='f4').reshape(visRows, visCols)
     # compute EVI = G * (NIR - RED) / (NIR + C1 * RED - C2 * BLUE + L)
     # https://en.wikipedia.org/wiki/Enhanced_vegetation_index
+    # https://eospso.gsfc.nasa.gov/sites/default/files/atbd/atbd_mod13.pdf p120 F12
     eviArray = modis_G * (nirArray - redArray_aggr) / (
         nirArray + modis_C1 * redArray_aggr - modis_C2 * blueArray + modis_L)
     eviArray = np.nan_to_num(eviArray)
