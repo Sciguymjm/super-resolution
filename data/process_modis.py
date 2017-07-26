@@ -17,6 +17,7 @@ layers = ["250m 16 days EVI", "250m 16 days NDVI", "250m 16 days NIR reflectance
 raw_files = [join(raw_dir, fpath) for fpath in listdir(raw_dir) if
              isfile(join(raw_dir, fpath)) and fpath.endswith(".hdf")]
 for fpath in raw_files:
+    print fpath
     n = fpath.split(".")[2]
     h = int(n[1:3])
     v = int(n[4:6])
@@ -43,6 +44,6 @@ for fpath in raw_files:
         tp = sds[:] * scale_factor  # scale factor
         dr = xr.DataArray(tp, coords=[xs, ys], dims=["x", "y"])
         ds = xr.Dataset(dict(day_of_year=dr))
-        ds.to_netcdf(os.path.join(netcdf_dir, "MOD09A1_%s_%s_%i_%i_%s_%s.nc" % (
-            fpath.split(".")[1], layer, h, v, ulx, uly)))
+        ds.to_netcdf(os.path.join(netcdf_dir, "MOD09A1_%s_%s_%i_%i_%s_%s_%s_%s.nc" % (
+            fpath.split(".")[1], layer, h, v, ulx, uly, lrx, lry)))
         print "Processed", layer, v, h
