@@ -1,7 +1,7 @@
 import argparse
 import glob
 import os
-
+import xarray as xr
 import gdal
 import numpy as np
 import osr
@@ -11,7 +11,7 @@ import osr
 # ext.01 - red
 parser = argparse.ArgumentParser()
 parser.add_argument('inDir', help='Input Directory')
-parser.add_argument('outDir')
+parser.add_argument('outDir', help='Output directory')
 args = parser.parse_args()
 
 inDir = args.inDir
@@ -33,6 +33,7 @@ modis_G = 2.5
 # Writing to TIFF will actually improve the processing speed later on, so I'm leaving it in
 
 def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
+    xr.Dataset(dict(arr=xr.DataArray(array))).to_netcdf(newRasterfn + ".nc")
     np.save(newRasterfn + ".npy", array)
     return
     cols = array.shape[1]
@@ -67,6 +68,7 @@ for raster in flist:
     evi_path = os.path.join(outDir, os.path.basename(raster)[:12] + '.evi.tif')
     # ndviMVC = os.path.join(os.path.basename(raster)[:8] + '.ndvi.utc-0-6.MVC.tif')
     nirArray = np.fromfile(nir, dtype='f4').reshape(visRows, visCols)
+    nirArray[nirArray < 0] = 0.00001
     # nirArray = nirArray[0000:10000, 0000:7000]
     # redArray_aggr = redArray_aggr[0000:10000, 0000:7000]
 
@@ -75,6 +77,7 @@ for raster in flist:
     # now process redArray to minimize the memory and disk usage
     redArray = np.fromfile(red, dtype='f4').reshape(extRows, extCols)
     redArray_aggr = redArray.reshape(visRows, 2, visCols, 2).mean(axis=(1, 3))
+    redArray_aggr[redArray_aggr < 0] = 0.00001
 
     ndviArray = (nirArray - redArray_aggr) / (nirArray + redArray_aggr)
     ndviArray = np.nan_to_num(ndviArray)
@@ -88,6 +91,7 @@ for raster in flist:
 
     # load blue array
     blueArray = np.fromfile(raster, dtype='f4').reshape(visRows, visCols)
+    blueArray[blueArray < 0] = 0.00001
     # compute EVI = G * (NIR - RED) / (NIR + C1 * RED - C2 * BLUE + L)
     # https://en.wikipedia.org/wiki/Enhanced_vegetation_index
     # https://eospso.gsfc.nasa.gov/sites/default/files/atbd/atbd_mod13.pdf p120 F12
