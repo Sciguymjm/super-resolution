@@ -33,6 +33,8 @@ modis_G = 2.5
 # Writing to TIFF will actually improve the processing speed later on, so I'm leaving it in
 
 def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
+    np.save(newRasterfn + ".npy", array)
+    return
     cols = array.shape[1]
     rows = array.shape[0]
     originX = 85
