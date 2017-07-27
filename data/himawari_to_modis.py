@@ -8,17 +8,17 @@ import xarray
 
 testing = False
 
-width = 4800
-height = 4800
+width = 4800 / 2
+height = 4800 / 2
 
 hwidth = 12000
 hheight = 12000
 
 modis_list = glob.glob(os.path.join("modis", "*MOD09A1_*composite day*.nc"))
-modis_ndvi_list = glob.glob(os.path.join("modis", "*MOD09A1_*EVI*.nc"))
+modis_ndvi_list = glob.glob(os.path.join("modis", "*MOD09A1_*NDVI*.nc"))
 himawari_doy = []
 # turn himawari dates into day of year
-himawari_list = glob.glob(os.path.join("himawari", "*evi.tif.npy"))
+himawari_list = glob.glob(os.path.join("himawari", "*ndvi.tif.npy"))
 for h in himawari_list:
     a = np.load(h)
     himawari_doy.append(
@@ -46,11 +46,11 @@ for f in modis_list:
         int(float(f.split("_")[5])) / 2,
         int(float(f.split("_")[6].split(".")[0])) / 2)  # TODO: make sure rounding is correct?
     ds -= doy  # normalize the day to 0
-    i, j = np.ogrid[top_left[0]:top_left[0] + 4800, top_left[1]: top_left[1] + 4800]
-    himawari_composite = himawari_ndvi.clip(min=0)[i, j, ds.day_of_year.clip(min=0).values]
+    i, j = np.ogrid[top_left[0] + 3000:top_left[0] + 3000 + 2400, top_left[1]: top_left[1] + 2400]
+    himawari_composite = himawari_ndvi.clip(min=0)[i, j, ds.day_of_year.clip(min=0).values[::2, ::2]]
     # himawari_composite[(himawari_composite < 0) | (himawari_composite == 9999)] = np.nan
     # himawari_composite = himawari_ndvi.isel_points(x=np.arange(2400), y=np.arange(2400), t=ds.day_of_year.clip(min=0))
-    h_da = xarray.DataArray(himawari_composite, coords=[range(4800), range(4800)], dims=["x", "y"])
+    h_da = xarray.DataArray(himawari_composite, coords=[range(2400), range(2400)], dims=["x", "y"])
     h_ds = xarray.Dataset(dict(ndvi=h_da))
     h_ds.to_netcdf(
         f.split("/")[0] + "/himawari_" + "_".join(f.split("/")[1].split("_")[3:]) + f.split("/")[1].split("_")[
