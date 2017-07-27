@@ -33,18 +33,18 @@ modis_G = 2.5
 # Writing to TIFF will actually improve the processing speed later on, so I'm leaving it in
 
 def array2raster(newRasterfn, pixelWidth, pixelHeight, array):
-    xr.Dataset(dict(arr=xr.DataArray(array))).to_netcdf(newRasterfn + ".nc")
-    np.save(newRasterfn + ".npy", array)
-    return
+    # xr.Dataset(dict(arr=xr.DataArray(array))).to_netcdf(newRasterfn + ".nc")
+    # np.save(newRasterfn + ".npy", array)
+    # return
     cols = array.shape[1]
     rows = array.shape[0]
-    originX = 85
-    originY = -60
+    originX = 85 # starting longitude
+    originY = -60 # starting latitude
     driver = gdal.GetDriverByName('GTiff')
     outRaster = driver.Create(newRasterfn, cols, rows, 1, gdal.GDT_Int16)
     outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
     outband = outRaster.GetRasterBand(1)
-    outband.SetNoDataValue(-1)
+    outband.SetNoDataValue(-9999)
     outband.WriteArray(array)
     outRasterSRS = osr.SpatialReference()
     outRasterSRS.ImportFromEPSG(4326)
