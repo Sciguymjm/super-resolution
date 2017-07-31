@@ -1,14 +1,27 @@
-from subprocess import Popen, PIPE
+import argparse
+import time
+from subprocess import Popen
 
 year = "2017"
 month = "03"
 day = "06"
 
+parser = argparse.ArgumentParser()
+parser.add_argument('-dr', help="Dry run", action="store_true")
+args = parser.parse_args()
+dry_run = args.dr
 username = "mmage"
 password = "ue3AaxCIb23I"
-
-p = Popen(["Daac2Disk_win.exe", "--shortname", "MCD43B3", "--versionid", "005",
-           "--begin", "{0}-{1}-{2}".format(year, month, day), "--end", "{0}-{1}-{2}".format(year, month, day),
-           "--outputdir", "modis", "--tile", "28", "29", "4", "5"], stdin=PIPE)
-stdout = p.communicate("y\n" + username + "\n" + password + "\n")
-print stdout
+hMin = 23
+hMax = 32
+vMin = 3
+vMax = 13
+for h in range(hMin, hMax + 1):
+    for v in range(vMin, vMax + 1):
+        s = "wget -P modis/ -r -nc --no-parent --reject \"index.html\" https://e4ftl01.cr.usgs.gov/MOLT/MOD13Q1.005/2016.08.12/ --user mmage --password ue3AaxCIb23I -nd -A \"*h" + str(
+            h).zfill(2) + "v" + str(v).zfill(2) + "*.hdf\""
+        if dry_run:
+            print
+        else:
+            p = Popen(s, shell=True)
+            time.sleep(5)
