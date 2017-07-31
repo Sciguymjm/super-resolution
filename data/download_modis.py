@@ -21,7 +21,7 @@ for h in range(hMin, hMax + 1):
         s = "wget -P modis/ -r -nc --no-parent --reject \"index.html\" https://e4ftl01.cr.usgs.gov/MOLT/MOD13Q1.005/2016.08.12/ --user mmage --password ue3AaxCIb23I -nd -A \"*h" + str(
             h).zfill(2) + "v" + str(v).zfill(2) + "*.hdf\""
         if dry_run:
-            print
+            print s
         else:
             p = Popen(s, shell=True)
             time.sleep(5)
