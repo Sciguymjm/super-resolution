@@ -138,8 +138,14 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
-
+*.swp
 *cookie*.txt
 data/himawari/
 data/modis/
-*.swp
+data/composite/
+data/tiles/
+data/*.xml
+data/*.tif
+install_gdal.sh
+*.exe
+
