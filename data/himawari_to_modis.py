@@ -34,30 +34,31 @@ for h in merged_list:
                            "%Y%m%d%H%M").timetuple().tm_yday, a))
 modis_ndvi = himawari_doy[0][1].GetRasterBand(2).ReadAsArray()  # bands: himawari, modis, modis_doy
 modis_doy = himawari_doy[0][1].GetRasterBand(3).ReadAsArray()
-himawari_doy = sorted(himawari_doy, key=lambda x: x[0])
+himawari_doy = sorted(himawari_doy, key=lambda x: x[0], reverse=True)
 base = himawari_doy[0][0]
 h_shape = himawari_doy[0][1].GetRasterBand(1).ReadAsArray().shape
 layers = 16
 himawari_ndvi = np.zeros((h_shape[0], h_shape[1], layers))
-i = 0
-for t in himawari_doy:
+for i, t in enumerate(himawari_doy):
     if testing:
         himawari_ndvi[:, :, i] = i
         i += 1
         continue
     if t[1] is None:
         continue
-    if t[0] - base >= layers:
+    if i >= layers:
         break  # we dont want to go past the 16th day of this cycle
     himawari_ndvi[:, :, t[0] - base] = t[1].GetRasterBand(1).ReadAsArray()
 # open warped modis array
 shape = modis_doy.shape  # read shape to form ogrid
 i, j = np.ogrid[:shape[0], :shape[1]]
-modis_doy = modis_doy.clip(min=0) # TODO: mask himawari properly
+modis_doy -= base
+modis_doy = modis_doy.clip(min=0)  # TODO: mask himawari properly
 himawari_composite = himawari_ndvi[i, j, modis_doy]
 driver = gdal.GetDriverByName('GTiff')
-outRaster = driver.Create("composite-" + modis_ndvi_file, shape[0], shape[1], 1, gdal.GDT_Int16)
-outRaster.SetGeoTransform(himawari_doy[0][1].GetRasterBand(2).GetGeoTransform())
+outRaster = driver.Create(modis_ndvi_file.split("/")[0] + "/composite-" + modis_ndvi_file.split("/")[1], himawari_composite.shape[1], himawari_composite.shape[0], 1, gdal.GDT_Int16)
+print outRaster
+outRaster.SetGeoTransform(himawari_doy[0][1].GetGeoTransform())
 outband = outRaster.GetRasterBand(1)
 outband.SetNoDataValue(-9999)
 outband.WriteArray(himawari_composite)
