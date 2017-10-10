@@ -148,4 +148,6 @@ data/*.xml
 data/*.tif
 install_gdal.sh
 *.exe
+*.tif
+*.hdf
 
