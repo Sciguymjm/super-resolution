@@ -70,6 +70,8 @@ for raster in flist:
     # ndviMVC = os.path.join(os.path.basename(raster)[:8] + '.ndvi.utc-0-6.MVC.tif')
     nirArray = np.fromfile(nir, dtype='f4').reshape(visRows, visCols)
     nirArray[nirArray < 0] = 0.00001
+    nirArray = nirArray[::-1]  # reverse array so the tif looks like the array
+
     # nirArray = nirArray[0000:10000, 0000:7000]
     # redArray_aggr = redArray_aggr[0000:10000, 0000:7000]
 
@@ -89,23 +91,23 @@ for raster in flist:
     array2raster(ndvi_path, pixelWidth, pixelHeight, ndviArray)
 
     del ndviArray  # delete ndvi array to save memory
+    if False:
+        # load blue array
+        blueArray = np.fromfile(raster, dtype='f4').reshape(visRows, visCols)
+        blueArray[blueArray < 0] = 0.00001
+        # compute EVI = G * (NIR - RED) / (NIR + C1 * RED - C2 * BLUE + L)
+        # https://en.wikipedia.org/wiki/Enhanced_vegetation_index
+        # https://eospso.gsfc.nasa.gov/sites/default/files/atbd/atbd_mod13.pdf p120 F12
+        eviArray = modis_G * (nirArray - redArray_aggr) / (
+            nirArray + modis_C1 * redArray_aggr - modis_C2 * blueArray + modis_L)
+        eviArray = np.nan_to_num(eviArray)
+        eviArray = np.where(np.logical_and(eviArray < 1, eviArray > 0), eviArray, -0.9999)
+        eviArray = eviArray * 10000
+        eviArray = eviArray.astype('i2')
+        eviArray = eviArray[::-1]  # reverse array so the tif looks like the array
 
-    # load blue array
-    blueArray = np.fromfile(raster, dtype='f4').reshape(visRows, visCols)
-    blueArray[blueArray < 0] = 0.00001
-    # compute EVI = G * (NIR - RED) / (NIR + C1 * RED - C2 * BLUE + L)
-    # https://en.wikipedia.org/wiki/Enhanced_vegetation_index
-    # https://eospso.gsfc.nasa.gov/sites/default/files/atbd/atbd_mod13.pdf p120 F12
-    eviArray = modis_G * (nirArray - redArray_aggr) / (
-        nirArray + modis_C1 * redArray_aggr - modis_C2 * blueArray + modis_L)
-    eviArray = np.nan_to_num(eviArray)
-    eviArray = np.where(np.logical_and(eviArray < 1, eviArray > 0), eviArray, -0.9999)
-    eviArray = eviArray * 10000
-    eviArray = eviArray.astype('i2')
-    eviArray = eviArray[::-1]  # reverse array so the tif looks like the array
-
-    # if utcHour < 6:
-    #     ndviArrayMVC = np.maximum(ndviArray, ndviArrayMVC)
-    array2raster(evi_path, pixelWidth, pixelHeight, eviArray)
+        # if utcHour < 6:
+        #     ndviArrayMVC = np.maximum(ndviArray, ndviArrayMVC)
+        array2raster(evi_path, pixelWidth, pixelHeight, eviArray)
     # uncomment for MVC file
     # array2raster(ndviMVC,pixelWidth,pixelHeight,ndviArrayMVC)
