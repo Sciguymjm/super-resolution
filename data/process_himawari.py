@@ -19,10 +19,10 @@ outDir = args.outDir
 
 pixelWidth = 0.01
 pixelHeight = 0.01
-visRows = 12000 * 2
-visCols = 12000 * 2
-extRows = 24000 * 2
-extCols = 24000 * 2
+visRows = 12000
+visCols = 12000
+extRows = 24000
+extCols = 24000
 # https://eospso.gsfc.nasa.gov/sites/default/files/atbd/atbd_mod13.pdf p33
 modis_L = 1.0
 modis_C1 = 6.0
@@ -58,8 +58,8 @@ for raster in flist:
     print raster
     if len(glob.glob(os.path.join(inDir, os.path.basename(raster)[:12] + '*.dat'))) < 4:
         continue
-    if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.tif'))) > 2:
-        continue  # we already processed this one. save us some time
+    # if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.tif'))) > 2:
+    #     continue  # we already processed this one. save us some time
     utcHour = int(os.path.basename(raster)[8:10])
     print raster, utcHour
     red = raster.replace('vis', 'ext')
