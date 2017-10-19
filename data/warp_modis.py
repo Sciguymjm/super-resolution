@@ -7,7 +7,7 @@ flist = glob.glob("modis/*.hdf")
 
 def split_hdf(layer_name, layer_id):
     call(
-        "gdalwarp -overwrite -t_srs EPSG:3857 -tr 1000 1000 -tap -r near -multi -dstnodata -9999 -of GTiff \"HDF4_EOS:EOS_GRID:\\\"" + f + "\\\":MODIS_Grid_16DAY_250m_500m_VI:250m 16 days " + layer_name + "\" " +
+        'gdalwarp -overwrite -t_srs EPSG:3857 -tr 1000 1000 -tap -r near -multi -dstnodata -9999 -of GTiff "HDF4_EOS:EOS_GRID:"' + f + '":MODIS_Grid_16DAY_250m_500m_VI:250m 16 days ' + layer_name + '" ' +
         f.split("/")[0] + "/warped-" + layer_id + "-" + f.split("/")[1].replace("hdf", "tif"), shell=True)
 
 for f in flist:

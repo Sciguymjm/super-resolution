@@ -15,17 +15,39 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-dl", help="Download Himawari data from S3", action="store_true")
 parser.add_argument("--process", help="Process Himawari data from S3", action="store_true")
 args = parser.parse_args()
+mem_driver = gdal.GetDriverByName('MEM')
 
+
+def array2raster(newRasterfn, pixelWidth, pixelHeight, array, code):
+    # xr.Dataset(dict(arr=xr.DataArray(array))).to_netcdf(newRasterfn + ".nc")
+    # np.save(newRasterfn + ".npy", array)
+    # return
+    cols = array.shape[1]
+    rows = array.shape[0]
+    originX = 85 # starting longitude
+    originY = -60 # starting latitude
+    driver = gdal.GetDriverByName('GTiff')
+    outRaster = driver.Create(newRasterfn, cols, rows, 1, gdal.GDT_Int16)
+    outRaster.SetGeoTransform((originX, pixelWidth, 0, originY, 0, pixelHeight))
+    outband = outRaster.GetRasterBand(1)
+    outband.SetNoDataValue(-9999)
+    outband.WriteArray(array)
+    outRasterSRS = gdal.osr.SpatialReference()
+    outRasterSRS.ImportFromEPSG(code)
+    outRaster.SetProjection(outRasterSRS.ExportToWkt())
+    outband.FlushCache()
 
 def process(filepath, layer, layerfilepath):
-    print filepath, layerfilepath
+    file_type = layer.split(' ')[3].lower()
+    print layerfilepath
     # print ds.GetMetadata()
     tempndvi = gdal.Open(layerfilepath)
-    output = filepath + layer + "-test.tif"
-    gdal.Warp(output, tempndvi, dstSRS='EPSG:3857', xRes=1000, yRes=1000, targetAlignedPixels=True)
-    print output
+    array2raster(file_type + '-test.tif', 250, 250, tempndvi.ReadAsArray(), 3857)
+    output = filepath.replace('.hdf', layer + "-test.tif")
+    gdal.Warp(output, tempndvi, dstSRS='EPSG:3857')
+    # gdal.Warp(himawari_warped, himawari_unwarped, srcSRS='EPSG:4326', dstSRS='EPSG:3857')
     if "composite" not in layer:
-        file_type = layer.split(' ')[3].lower()
+
         modis_doy = int(filepath.split('.')[1][5:])
         modis_year = int(filepath.split('.')[4][0:4])
         date = datetime.datetime(modis_year, 1, 1) + datetime.timedelta(modis_doy - 1)
@@ -44,7 +66,7 @@ def process(filepath, layer, layerfilepath):
         himawari_files = [
             'data/processed/' + (timendate + datetime.timedelta(days=i)).strftime("%Y%m%d%H%M.{}.tif".format(file_type))
             for i in range(16)]
-        print himawari_files
+        print himawari_files, [os.path.isfile(f) for f in himawari_files]
         file_exists = [os.path.isfile(f) for f in himawari_files]
         if args.dl:
             for exists, h in zip(file_exists, himawari_download_files):
@@ -52,9 +74,17 @@ def process(filepath, layer, layerfilepath):
                     os.system('aws s3 sync s3://himawari-nex/radiance/ data/himawari/ --exclude "*" --include "{}"'.format(h))
                 print h
         if args.process:
-            os.system('python data/process_himawari.py data/himawari data/himawari')
+            os.system('python data/process_himawari.py data/himawari data/processed')
         assert all([os.path.isfile(f) for f in himawari_files])  # make sure all the files are present before proceeding
-        modis_refl_warped = gdal.Open(output, gdal.GA_ReadOnly)
+
+        # Reshaping modis to lower resolution
+        modis_refl_warped_b = gdal.Open(output, gdal.GA_ReadOnly)
+        modis_shape_before = modis_refl_warped_b.GetRasterBand(1).ReadAsArray().shape
+        print modis_shape_before
+        gdal.WarpOptions()
+        gdal.Warp('modis.tif', modis_refl_warped_b, width=modis_shape_before[0] / 2, height=modis_shape_before[1] / 2, resampleAlg='near')
+
+        modis_refl_warped = gdal.Open('modis.tif', gdal.GA_ReadOnly)
         ulx, xres, xskew, uly, yskew, yres = modis_refl_warped.GetGeoTransform()
         lrx = ulx + (modis_refl_warped.RasterXSize * xres)
         lry = uly + (modis_refl_warped.RasterYSize * yres)
@@ -68,13 +98,13 @@ def process(filepath, layer, layerfilepath):
             himawari_warped = 'hw.tif'
             gdal.Warp(himawari_warped, himawari_unwarped, srcSRS='EPSG:4326', dstSRS='EPSG:3857')
             himawari_cutout = output + '-test-2.tif'
-            gdal.Warp(himawari_cutout, himawari_warped, outputBoundsSRS='EPSG:3857', outputBounds=[ulx, lry, lrx, uly],
-                      xRes=1000, yRes=1000)
+            gdal.Warp(himawari_cutout, himawari_warped, outputBoundsSRS='EPSG:3857', outputBounds=[ulx, lry, lrx, uly])
             print "Opening layer", i
             data = gdal.Open(himawari_cutout, gdal.GA_ReadOnly)
             d = data.GetRasterBand(1).ReadAsArray()
             print "Done"
-            matrix[:, :, i] = d
+            print modis_shape, d.shape
+            matrix[:, :, i] = d[:modis_shape[0], :modis_shape[1]]
         print "Opening composite doy...."
         m = gdal.Open(filepath + '250m 16 days composite day of the year-test.tif')
         print "Done."
@@ -88,7 +118,6 @@ def process(filepath, layer, layerfilepath):
         driver = gdal.GetDriverByName('GTiff')
         outRaster = driver.Create("data/processed/composite-" + ".".join(filepath.split('.')[1:4]) + file_type + '.tif',
                                   himawari_composite.shape[1], himawari_composite.shape[0], 1, gdal.GDT_Int16)
-        print outRaster
         outRaster.SetGeoTransform(modis_refl_warped.GetGeoTransform())
         outband = outRaster.GetRasterBand(1)
         outband.SetNoDataValue(-9999)
@@ -113,6 +142,7 @@ def main():
         for layer in layers:
             for dataset in datasets:
                 if layer in dataset[0]:
+                    print dataset
                     process(filepath, layer, dataset[0])
 
 
