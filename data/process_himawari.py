@@ -58,7 +58,7 @@ for raster in flist:
     print raster
     if len(glob.glob(os.path.join(inDir, os.path.basename(raster)[:12] + '*.dat'))) < 4:
         continue
-    if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.tif'))) > 2:
+    if len(glob.glob(os.path.join(outDir, os.path.basename(raster)[:12] + '*.tif'))) > 1:
         continue  # we already processed this one. save us some time
     utcHour = int(os.path.basename(raster)[8:10])
     print raster, utcHour
