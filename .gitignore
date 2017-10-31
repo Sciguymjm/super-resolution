@@ -150,4 +150,5 @@ install_gdal.sh
 *.exe
 *.tif
 *.hdf
+*.xml
 
