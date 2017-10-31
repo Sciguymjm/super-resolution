@@ -67,7 +67,7 @@ def process(filepath, layer, layerfilepath):
             'data/processed/' + (timendate + datetime.timedelta(days=i)).strftime("%Y%m%d%H%M.{}.tif".format(file_type))
             for i in range(16)]
         print himawari_files, [os.path.isfile(f) for f in himawari_files]
-        file_exists = [os.path.isfile(f) for f in himawari_files]
+        file_exists = [os.path.isfile(f) for f in himawari_download_files]
         if args.dl:
             for exists, h in zip(file_exists, himawari_download_files):
                 if not exists:
@@ -82,7 +82,7 @@ def process(filepath, layer, layerfilepath):
         modis_shape_before = modis_refl_warped_b.GetRasterBand(1).ReadAsArray().shape
         print modis_shape_before
         gdal.WarpOptions()
-        gdal.Warp('modis.tif', modis_refl_warped_b, width=modis_shape_before[0] / 2, height=modis_shape_before[1] / 2, resampleAlg='near')
+        gdal.Warp('modis.tif', modis_refl_warped_b, xRes=2000, yRes=2000, resampleAlg='near')
 
         modis_refl_warped = gdal.Open('modis.tif', gdal.GA_ReadOnly)
         ulx, xres, xskew, uly, yskew, yres = modis_refl_warped.GetGeoTransform()
@@ -104,16 +104,21 @@ def process(filepath, layer, layerfilepath):
             d = data.GetRasterBand(1).ReadAsArray()
             print "Done"
             print modis_shape, d.shape
-            matrix[:, :, i] = d[:modis_shape[0], :modis_shape[1]]
+            data = d[:modis_shape[0], :modis_shape[1]]
+            print "D.shape", data.shape
+            print "Data not null", data[data > 0]
+            matrix[:, :, i] = data
         print "Opening composite doy...."
-        m = gdal.Open(filepath + '250m 16 days composite day of the year-test.tif')
+        m = gdal.Open(filepath.replace('.hdf', '') + '250m 16 days composite day of the year-test.tif')
         print "Done."
-        modis_doy_array = m.GetRasterBand(1).ReadAsArray()
+        modis_doy_array = m.GetRasterBand(1).ReadAsArray()[:modis_shape[0], :modis_shape[1]]
         shape = modis_doy_array.shape  # read shape to form ogrid
         i, j = np.ogrid[:shape[0], :shape[1]]
         modis_doy_array -= modis_doy
         modis_doy_array = modis_doy_array.clip(min=0)
+        print modis_doy_array[modis_doy_array > 20]
         himawari_composite = matrix[i, j, modis_doy_array]
+        print himawari_composite[himawari_composite > 0]
         print "Done compositing"
         driver = gdal.GetDriverByName('GTiff')
         outRaster = driver.Create("data/processed/composite-" + ".".join(filepath.split('.')[1:4]) + file_type + '.tif',
