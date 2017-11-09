@@ -151,4 +151,4 @@ install_gdal.sh
 *.tif
 *.hdf
 *.xml
-
+*.nc
