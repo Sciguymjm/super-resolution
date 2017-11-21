@@ -9,6 +9,7 @@
 import datetime
 import glob
 import os
+import gc
 
 import gdal
 import matplotlib
@@ -16,8 +17,6 @@ import numpy as np
 
 matplotlib.rcParams['figure.figsize'] = "8,8"
 import scipy.ndimage
-from multiprocessing import Pool
-
 
 def proc(day):
     goes_selected = sorted(glob.glob('goes/{}/{}/O*C03*.nc'.format(day, timendate.hour)))
@@ -111,7 +110,7 @@ if __name__ == '__main__':
         # In[9]:
 
         nir_modis = gdal.Open(nir_layer)
-        nir_modis.ReadAsArray()
+        nir = nir_modis.ReadAsArray()
 
         # In[10]:
 
@@ -120,7 +119,7 @@ if __name__ == '__main__':
         gdal.Warp(output, nir_modis, dstSRS='EPSG:3857', xRes=1000, yRes=1000, resampleAlg='near')
         data = gdal.Open(output)
         nir_arr = data.ReadAsArray()
-
+        print (nir.shape, nir_arr.shape)
         # In[11]:
 
 
@@ -166,7 +165,7 @@ if __name__ == '__main__':
         # Find closest goes-16 times
         modis_time = filepath.split('.')[4][7:]
         # _time = datetime.datetime.strptime(modis_time, "%H%M%S") + datetime.timedelta(hours=5)
-        _time = datetime.time(14, 15, 0)  # UTC
+        _time = datetime.time(18, 15, 0)  # UTC
         ft = filepath.split('.')[2]
         h = ft[1:3]
         v = ft[4:6]
@@ -178,22 +177,22 @@ if __name__ == '__main__':
         #     _time += datetime.timedelta(minutes=-_time.minute % 15)
         timendate = datetime.datetime.combine(date.date(), _time)
         timendate.strftime('%Y-%m-%d %H:%M')
-
-        p = Pool(4)
-        result = p.map(proc, list(range(timendate.timetuple().tm_yday, timendate.timetuple().tm_yday + 16)))
-        print result
+        result = []
+        for x in list(range(timendate.timetuple().tm_yday, timendate.timetuple().tm_yday + 16)):
+            result.append(proc(x))
         goes_dict = {x: y for x, y in result}
-        print goes_dict, timendate
-
         test_run = False
-        p = Pool(4)
-        p.map(warp_goes, list(enumerate(goes_dict)))
+        for x in enumerate(goes_dict):
+            warp_goes(x)
 
         ratio = data.GetGeoTransform()[1] / cxres
 
         # resize using nn
-        resized_nir = scipy.ndimage.zoom(data.ReadAsArray(), ratio, order=0)
-        shape = resized_nir.shape
+        # resized_nir = scipy.ndimage.zoom(data.ReadAsArray(), ratio, order=0)
+        # shape = resized_nir.shape
+        gc.collect()
+        shape = nir_arr.shape
+        print "matrix shape", shape
         matrix = np.zeros((shape[0], shape[1], 16))
 
         for r in enumerate(goes_dict):
@@ -207,10 +206,16 @@ if __name__ == '__main__':
                     print output
                 else:
                     t = gdal.Open(output)
-                cut = gdal.Warp('cutout.tif', t, outputBoundsSRS=srs, outputBounds=[ulx, lry, lrx, uly])
+                dst_filename = 'cutout.tif'
+                dst = gdal.GetDriverByName('GTiff').Create(dst_filename, data.RasterXSize, data.RasterYSize, 1, gdal.GDT_Float32)
+                dst.SetGeoTransform(data.GetGeoTransform())
+                dst.SetProjection(data.GetProjection())
+                gdal.ReprojectImage(t, dst, t.GetProjection(), data.GetProjection(), gdal.GRA_NearestNeighbour)
+                del dst
+                # cut = gdal.Warp('cutout.tif', t, outputBoundsSRS=srs, outputBounds=[ulx, lry, lrx, uly])
+                cut = gdal.Open('cutout.tif')
                 culx, cxres, cxskew, culy, cyskew, cyres = cut.GetGeoTransform()
                 arr = cut.ReadAsArray()
-                print "shape", arr.shape, nir_arr.shape
                 assert arr.shape == shape, "{} is not equal to {}".format(arr.shape, shape)
                 if test_run:
                     for x in range(16):
@@ -219,17 +224,15 @@ if __name__ == '__main__':
                 else:
                     matrix[:, :, i] = arr
         for layer in range(16):
-            matrix[:, :, layer][resized_nir == -1000] = -1000
-
+            matrix[:, :, layer][nir_arr == -1000] = -1000
+        print (matrix[:, :, 0] > 0).any()
         # Resize doy array
         # resize using nn
-        resized_doy = scipy.ndimage.zoom(doy_arr, ratio, order=0)
-        print 'Ratio: ', ratio
-
+        # resized_doy = scipy.ndimage.zoom(doy_arr, ratio, order=0)
         i, j = np.ogrid[:shape[0], :shape[1]]
-        resized_doy -= doy
-        resized_doy = resized_doy.clip(min=0)
-        composite = matrix[i, j, resized_doy]
+        doy_arr -= doy
+        doy_arr = doy_arr.clip(min=0)
+        composite = matrix[i, j, doy_arr]
 
 
         def array_to_raster_w_source(dst_filename, array, source):
@@ -260,5 +263,5 @@ if __name__ == '__main__':
             os.makedirs(os.path.dirname(fn))
         array_to_raster_w_source(fn, composite, cut)  # use the cutout for proper resolution
     os.system(
-        r'gdal_merge.py -n -1000 -a_nodata -1000 -of GTiff -o composite\{}\composite-{}.tif composite\{}\h*.tif'.format(
+        'gdal_merge.py -n -1000 -a_nodata -1000 -of GTiff -o composite\\{}\\composite-{}.tif composite\\{}\\h*.tif'.format(
             doy, doy, doy))
