@@ -152,3 +152,6 @@ install_gdal.sh
 *.hdf
 *.xml
 *.nc
+/scripts/deepsd/
+/scripts/srcnn/
+/scripts/srresnet-tensorflow/
