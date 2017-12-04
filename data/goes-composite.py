@@ -44,7 +44,7 @@ def warp_goes(r):
 
         if not os.path.isfile(output):
             t = gdal.Warp(output, 'NETCDF:' + f + ':Rad', dstSRS='EPSG:3857')
-            print output
+            print (output)
 
 
 if __name__ == '__main__':
@@ -105,7 +105,7 @@ if __name__ == '__main__':
                 nir_layer = dataset[0]
 
         file_type = nir_layer.split(' ')[3].lower()
-        print nir_layer, file_type
+        print (nir_layer, file_type)
 
         # In[9]:
 
@@ -165,7 +165,7 @@ if __name__ == '__main__':
         # Find closest goes-16 times
         modis_time = filepath.split('.')[4][7:]
         # _time = datetime.datetime.strptime(modis_time, "%H%M%S") + datetime.timedelta(hours=5)
-        _time = datetime.time(18, 15, 0)  # UTC
+        _time = datetime.time(19, 15, 0)  # UTC
         ft = filepath.split('.')[2]
         h = ft[1:3]
         v = ft[4:6]
@@ -192,7 +192,7 @@ if __name__ == '__main__':
         # shape = resized_nir.shape
         gc.collect()
         shape = nir_arr.shape
-        print "matrix shape", shape
+        print ("matrix shape", shape)
         matrix = np.zeros((shape[0], shape[1], 16))
 
         for r in enumerate(goes_dict):
@@ -203,10 +203,11 @@ if __name__ == '__main__':
                 t = gdal.Open(output)
                 if not os.path.isfile(output):
                     t = gdal.Warp(output, 'NETCDF:' + f + ':Rad', dstSRS='EPSG:3857')
-                    print output
+                    print (output)
                 else:
                     t = gdal.Open(output)
                 dst_filename = 'cutout.tif'
+                os.remove(dst_filename)
                 dst = gdal.GetDriverByName('GTiff').Create(dst_filename, data.RasterXSize, data.RasterYSize, 1, gdal.GDT_Float32)
                 dst.SetGeoTransform(data.GetGeoTransform())
                 dst.SetProjection(data.GetProjection())
@@ -216,6 +217,7 @@ if __name__ == '__main__':
                 cut = gdal.Open('cutout.tif')
                 culx, cxres, cxskew, culy, cyskew, cyres = cut.GetGeoTransform()
                 arr = cut.ReadAsArray()
+                print (day, np.sum(arr == 0))
                 assert arr.shape == shape, "{} is not equal to {}".format(arr.shape, shape)
                 if test_run:
                     for x in range(16):
@@ -225,13 +227,14 @@ if __name__ == '__main__':
                     matrix[:, :, i] = arr
         for layer in range(16):
             matrix[:, :, layer][nir_arr == -1000] = -1000
-        print (matrix[:, :, 0] > 0).any()
+
         # Resize doy array
         # resize using nn
         # resized_doy = scipy.ndimage.zoom(doy_arr, ratio, order=0)
         i, j = np.ogrid[:shape[0], :shape[1]]
         doy_arr -= doy
         doy_arr = doy_arr.clip(min=0)
+        # assert doy_arr.max() == 15 # prevent off by one errors
         composite = matrix[i, j, doy_arr]
 
 
@@ -263,5 +266,4 @@ if __name__ == '__main__':
             os.makedirs(os.path.dirname(fn))
         array_to_raster_w_source(fn, composite, cut)  # use the cutout for proper resolution
     os.system(
-        'gdal_merge.py -n -1000 -a_nodata -1000 -of GTiff -o composite\\{}\\composite-{}.tif composite\\{}\\h*.tif'.format(
-            doy, doy, doy))
+        'gdal_merge.py -n -1000 -a_nodata -1000 -of GTiff -o composite/{}/composite-{}.tif composite/{}/h*.tif'.format(doy, doy, doy))
